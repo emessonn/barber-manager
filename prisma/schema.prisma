@@ -1,0 +1,289 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_PRISMA_URL")
+}
+
+// ==================== AUTH ====================
+enum UserRole {
+  ADMIN
+  BARBER
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  emailVerified  DateTime?
+  name           String?
+  avatar         String?
+  role           UserRole  @default(BARBER)
+  barbershop_id  String
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  barbershop     Barbershop  @relation(fields: [barbershop_id], references: [id], onDelete: Cascade)
+  barber         Barber?
+  financial_records FinancialRecord[]
+
+  @@index([barbershop_id])
+  @@index([email])
+}
+
+// ==================== BARBERSHOP (MULTI-TENANT) ====================
+model Barbershop {
+  id               String    @id @default(cuid())
+  name             String
+  slug             String    @unique  // URL-friendly identifier
+  address          String
+  phone            String
+  logo_url         String?    @db.Text
+  comission_rate   Float     @default(20)  // Default commission percentage
+  is_active        Boolean   @default(true)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  users            User[]
+  barbers          Barber[]
+  services         Service[]
+  bookings         Booking[]
+  clients          Client[]
+  inventory_items  InventoryItem[]
+  financial_records FinancialRecord[]
+  commissions      Commission[]
+
+  @@index([slug])
+}
+
+// ==================== BARBERS ====================
+model Barber {
+  id                    String    @id @default(cuid())
+  name                  String
+  phone                 String
+  user_id               String?   @unique  // Link to User if is also an admin
+  barbershop_id         String
+  commission_percentage Float     @default(20)
+  working_hours         Json      @default("{\"monday\": {\"start\": \"09:00\", \"end\": \"18:00\", \"break_time\": 60}, \"tuesday\": {\"start\": \"09:00\", \"end\": \"18:00\", \"break_time\": 60}, \"wednesday\": {\"start\": \"09:00\", \"end\": \"18:00\", \"break_time\": 60}, \"thursday\": {\"start\": \"09:00\", \"end\": \"18:00\", \"break_time\": 60}, \"friday\": {\"start\": \"09:00\", \"end\": \"19:00\", \"break_time\": 60}, \"saturday\": {\"start\": \"09:00\", \"end\": \"15:00\", \"break_time\": 30}, \"sunday\": {\"start\": null, \"end\": null}}")  // Por dia: {start, end, break_time em minutos}
+  avatar_url           String?
+  is_active            Boolean   @default(true)
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  barbershop    Barbershop  @relation(fields: [barbershop_id], references: [id], onDelete: Cascade)
+  user          User?       @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  bookings      Booking[]
+  commissions   Commission[]
+
+  @@unique([user_id])
+  @@index([barbershop_id])
+}
+
+// ==================== SERVICES ====================
+model Service {
+  id                String    @id @default(cuid())
+  name              String
+  price             Float     // R$ do serviço
+  duration_minutes  Int       // Duração em minutos
+  description       String?   @db.Text
+  barbershop_id     String
+  is_active         Boolean   @default(true)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  barbershop   Barbershop  @relation(fields: [barbershop_id], references: [id], onDelete: Cascade)
+  bookings     Booking[]
+  commissions  Commission[]
+
+  @@index([barbershop_id])
+}
+
+// ==================== BOOKINGS ====================
+enum BookingStatus {
+  PENDENTE
+  CONFIRMADO
+  FINALIZADO
+  CANCELADO
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  barber_id       String
+  service_id      String
+  client_id       String
+  date_time       DateTime      // Data e hora do agendamento
+  status          BookingStatus @default(PENDENTE)
+  notes           String?       @db.Text
+  total_price     Float?        // Preço final (pode diferir por promoção)
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+  completed_at    DateTime?     // Quando foi finalizado
+
+  barber       Barber      @relation(fields: [barber_id], references: [id], onDelete: Restrict)
+  service      Service     @relation(fields: [service_id], references: [id], onDelete: Restrict)
+  client       Client      @relation(fields: [client_id], references: [id], onDelete: Restrict)
+  commissions  Commission[]
+  financial_record FinancialRecord?
+
+  @@unique([barber_id, date_time])
+  @@index([client_id])
+  @@index([barber_id])
+  @@index([date_time])
+  @@index([status])
+}
+
+// ==================== CLIENTS (CRM) ====================
+model Client {
+  id                String    @id @default(cuid())
+  name              String
+  email             String?
+  phone             String    @unique
+  barbershop_id     String
+  favorite_barber_id String?
+  notes             String?   @db.Text
+  last_visit        DateTime?
+  birthday          DateTime?
+  fidelity_points   Int       @default(0)
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  barbershop      Barbershop  @relation(fields: [barbershop_id], references: [id], onDelete: Cascade)
+  bookings        Booking[]
+  reminders       Reminder[]
+
+  @@unique([phone, barbershop_id])
+  @@index([barbershop_id])
+  @@index([email])
+}
+
+// ==================== FINANCIAL ====================
+enum FinancialType {
+  ENTRADA
+  SAIDA
+}
+
+model FinancialRecord {
+  id              String        @id @default(cuid())
+  barbershop_id   String
+  user_id         String?       // Quem registrou
+  type            FinancialType // ENTRADA (receita) ou SAIDA (despesa)
+  amount          Float
+  description     String        @db.Text
+  category        String?       // Ex: SERVIÇO, PRODUTO, ALUGUEL, etc
+  booking_id      String?       @unique // Se veio de um booking
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+
+  barbershop  Barbershop @relation(fields: [barbershop_id], references: [id], onDelete: Cascade)
+  user        User?      @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  booking     Booking?   @relation(fields: [booking_id], references: [id], onDelete: SetNull)
+
+  @@index([barbershop_id])
+  @@index([type])
+  @@index([created_at])
+}
+
+// ==================== INVENTORY ====================
+enum InventoryCategory {
+  CONSUMO   // Produtos para uso interno
+  REVENDA   // Produtos para venda
+}
+
+model InventoryItem {
+  id             String            @id @default(cuid())
+  name           String
+  description    String?           @db.Text
+  quantity       Int
+  min_quantity   Int               @default(5)
+  unit_price     Float
+  category       InventoryCategory @default(CONSUMO)
+  barbershop_id  String
+  created_at     DateTime          @default(now())
+  updated_at     DateTime          @updatedAt
+
+  barbershop  Barbershop @relation(fields: [barbershop_id], references: [id], onDelete: Cascade)
+
+  @@index([barbershop_id])
+  @@index([quantity])
+}
+
+// ==================== COMMISSIONS ====================
+model Commission {
+  id                  String    @id @default(cuid())
+  barber_id           String
+  booking_id          String?
+  service_id          String
+  amount              Float     // Valor da comissão
+  percentage          Float     // Percentual aplicado
+  computed_at         DateTime  @default(now())
+  created_at          DateTime  @default(now())
+
+  barber    Barber    @relation(fields: [barber_id], references: [id], onDelete: Cascade)
+  booking   Booking?  @relation(fields: [booking_id], references: [id], onDelete: SetNull)
+  service   Service   @relation(fields: [service_id], references: [id], onDelete: Restrict)
+  barbershop Barbershop @relation(fields: [barbershop_id], references: [id], onDelete: Cascade)
+  barbershop_id String
+
+  @@index([barber_id])
+  @@index([computed_at])
+}
+
+// ==================== REMINDERS ====================
+model Reminder {
+  id            String    @id @default(cuid())
+  client_id     String
+  booking_id    String?
+  message       String    @db.Text
+  type          String    // EMAIL, SMS, WHATSAPP, PUSH
+  status        String    @default("PENDING") // PENDING, SENT, FAILED
+  scheduled_at  DateTime
+  sent_at       DateTime?
+  created_at    DateTime  @default(now())
+
+  client   Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+
+  @@index([client_id])
+  @@index([status])
+  @@index([scheduled_at])
+}
