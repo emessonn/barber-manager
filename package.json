@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "SaaS de gerenciamento de barbearias - Multi-tenant, Premium UX",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
