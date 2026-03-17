@@ -1,23 +1,22 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   images: {
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "**.googleusercontent.com",
+        protocol: 'https',
+        hostname: '**.googleusercontent.com',
       },
       {
-        protocol: "https",
-        hostname: "**.gravatar.com",
+        protocol: 'https',
+        hostname: '**.gravatar.com',
       },
     ],
   },
   experimental: {
-    optimizePackageImports: ["@radix-ui/react-*", "lucide-react"],
+    optimizePackageImports: ['@radix-ui/react-*', 'lucide-react'],
   },
-};
+}
 
-export default nextConfig;
+export default nextConfig
