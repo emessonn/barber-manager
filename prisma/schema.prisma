@@ -102,7 +102,7 @@ model Barber {
   id                    String    @id @default(cuid())
   name                  String
   phone                 String
-  user_id               String?   @unique  // Link to User if is also an admin
+  user_id               String?  // Link to User if is also an admin
   barbershop_id         String
   commission_percentage Float     @default(20)
   working_hours         Json      @default("{\"monday\": {\"start\": \"09:00\", \"end\": \"18:00\", \"break_time\": 60}, \"tuesday\": {\"start\": \"09:00\", \"end\": \"18:00\", \"break_time\": 60}, \"wednesday\": {\"start\": \"09:00\", \"end\": \"18:00\", \"break_time\": 60}, \"thursday\": {\"start\": \"09:00\", \"end\": \"18:00\", \"break_time\": 60}, \"friday\": {\"start\": \"09:00\", \"end\": \"19:00\", \"break_time\": 60}, \"saturday\": {\"start\": \"09:00\", \"end\": \"15:00\", \"break_time\": 30}, \"sunday\": {\"start\": null, \"end\": null}}")  // Por dia: {start, end, break_time em minutos}
@@ -149,6 +149,7 @@ enum BookingStatus {
 
 model Booking {
   id              String        @id @default(cuid())
+  barbershop_id   String
   barber_id       String
   service_id      String
   client_id       String
@@ -160,6 +161,7 @@ model Booking {
   updated_at      DateTime      @updatedAt
   completed_at    DateTime?     // Quando foi finalizado
 
+  barbershop   Barbershop   @relation(fields: [barbershop_id], references: [id], onDelete: Cascade)
   barber       Barber      @relation(fields: [barber_id], references: [id], onDelete: Restrict)
   service      Service     @relation(fields: [service_id], references: [id], onDelete: Restrict)
   client       Client      @relation(fields: [client_id], references: [id], onDelete: Restrict)
