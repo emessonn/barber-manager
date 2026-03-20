@@ -93,7 +93,7 @@ export function ConfirmationStep({
           return
         }
 
-        createdIds.push(result.booking.id)
+        createdIds.push(result?.booking?.id ?? '') 
         cursor += service.duration_minutes * 60_000
       }
 
