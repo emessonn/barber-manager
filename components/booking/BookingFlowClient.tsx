@@ -1,116 +1,132 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookingStepper } from "@/components/booking/BookingStepper";
-import { ServiceSelector } from "@/components/booking/ServiceSelector";
-import { BarberSelector } from "@/components/booking/BarberSelector";
-import { DateTimeSelector } from "@/components/booking/DateTimeSelector";
-import { ConfirmationStep } from "@/components/booking/ConfirmationStep";
-import { Service, Barber } from "@prisma/client";
-import { Calendar, User, Clock, CheckCircle } from "lucide-react";
+import { useState } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { BookingStepper } from '@/components/booking/BookingStepper'
+import { ServiceSelector } from '@/components/booking/ServiceSelector'
+import { BarberSelector } from '@/components/booking/BarberSelector'
+import { DateTimeSelector } from '@/components/booking/DateTimeSelector'
+import { ConfirmationStep } from '@/components/booking/ConfirmationStep'
+import { Service, Barber } from '@prisma/client'
+import { Calendar, User, Clock, CheckCircle } from 'lucide-react'
+import { defineStepper } from '@stepperize/react'
+
+const { useStepper } = defineStepper(
+  {
+    id: 'professional' as const,
+    title: 'Profissional',
+    icon: <User className='h-5 w-5' />,
+  },
+  {
+    id: 'service' as const,
+    title: 'Serviço',
+    icon: <Calendar className='h-5 w-5' />,
+  },
+  {
+    id: 'datetime' as const,
+    title: 'Data e Hora',
+    icon: <Clock className='h-5 w-5' />,
+  },
+  {
+    id: 'confirmation' as const,
+    title: 'Confirmação',
+    icon: <CheckCircle className='h-5 w-5' />,
+  },
+)
 
 interface BookingFlowProps {
-  barbershop_id: string;
-  services: Service[];
-  barbers: Barber[];
+  barbershop_id: string
+  barbershop_slug: string
+  services: Service[]
+  barbers: Barber[]
+  loggedInClient: { name: string; phone: string } | null
 }
 
 export function BookingFlow({
   barbershop_id,
+  barbershop_slug,
   services,
   barbers,
+  loggedInClient,
 }: BookingFlowProps) {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null);
-  const [selectedDateTime, setSelectedDateTime] = useState<Date | null>(null);
+  const stepper = useStepper()
 
-  const steps = [
-    { id: 1, title: "Serviço", icon: <Calendar className="h-5 w-5" /> },
-    { id: 2, title: "Profissional", icon: <User className="h-5 w-5" /> },
-    { id: 3, title: "Data e Hora", icon: <Clock className="h-5 w-5" /> },
-    { id: 4, title: "Confirmação", icon: <CheckCircle className="h-5 w-5" /> },
-  ];
+  const [selectedServices, setSelectedServices] = useState<Service[]>([])
+  const [selectedBarber, setSelectedBarber] = useState<Barber | null>(null)
+  const [selectedDateTime, setSelectedDateTime] = useState<Date | null>(null)
 
-  const handleNext = () => {
-    if (currentStep < 4) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
+  function handleToggleService(service: Service) {
+    setSelectedServices((prev) =>
+      prev.some((s) => s.id === service.id)
+        ? prev.filter((s) => s.id !== service.id)
+        : [...prev, service],
+    )
+  }
 
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleStepChange = (step: number) => {
-    if (step <= currentStep) {
-      setCurrentStep(step);
-    }
-  };
-
-  const handleSubmit = () => {
-    // Booking criado com sucesso
-    setCurrentStep(1);
-    setSelectedService(null);
-    setSelectedBarber(null);
-    setSelectedDateTime(null);
-  };
+  async function handleSubmit() {
+    // Booking confirmed — ConfirmationStep handles the success UI
+  }
 
   return (
-    <div className="space-y-8">
-      <BookingStepper
-        currentStep={currentStep}
-        steps={steps}
-        onStepChange={handleStepChange}
-      />
+    <div className='flex flex-col items-center space-y-8'>
+      <div className='w-full max-w-2xl px-2'>
+        <BookingStepper
+          steps={stepper.state.all}
+          currentId={stepper.state.current.data.id}
+          currentIndex={stepper.state.current.index}
+          onGoTo={(id) =>
+            stepper.navigation.goTo(
+              id as Parameters<typeof stepper.navigation.goTo>[0],
+            )
+          }
+        />
+      </div>
 
-      <Card className="border-zinc-700 bg-zinc-900/50 backdrop-blur">
-        <CardContent className="p-8">
-          {currentStep === 1 && (
-            <ServiceSelector
-              services={services}
-              selectedService={selectedService}
-              onSelectService={setSelectedService}
-              onNext={handleNext}
-            />
-          )}
-
-          {currentStep === 2 && (
-            <BarberSelector
-              barbers={barbers}
-              selectedBarber={selectedBarber}
-              onSelectBarber={setSelectedBarber}
-              onNext={handleNext}
-              onBack={handleBack}
-            />
-          )}
-
-          {currentStep === 3 && (
-            <DateTimeSelector
-              barber={selectedBarber}
-              service={selectedService}
-              selectedDateTime={selectedDateTime}
-              onSelectDateTime={setSelectedDateTime}
-              onNext={handleNext}
-              onBack={handleBack}
-            />
-          )}
-
-          {currentStep === 4 && (
-            <ConfirmationStep
-              barbershop_id={barbershop_id}
-              barber={selectedBarber}
-              service={selectedService}
-              dateTime={selectedDateTime}
-              onSubmit={handleSubmit}
-              onBack={handleBack}
-            />
-          )}
+      <Card className='w-full max-w-2xl border-zinc-700 bg-zinc-900/50 backdrop-blur'>
+        <CardContent className='p-6 sm:p-8'>
+          {stepper.flow.switch({
+            professional: () => (
+              <BarberSelector
+                barbers={barbers}
+                selectedBarber={selectedBarber}
+                onSelectBarber={setSelectedBarber}
+                onNext={() => stepper.navigation.next()}
+              />
+            ),
+            service: () => (
+              <ServiceSelector
+                services={services}
+                selectedServices={selectedServices}
+                onToggleService={handleToggleService}
+                onNext={() => stepper.navigation.next()}
+                onBack={() => stepper.navigation.prev()}
+              />
+            ),
+            datetime: () => (
+              <DateTimeSelector
+                barber={selectedBarber}
+                services={selectedServices}
+                selectedDateTime={selectedDateTime}
+                onSelectDateTime={setSelectedDateTime}
+                onNext={() => stepper.navigation.next()}
+                onBack={() => stepper.navigation.prev()}
+              />
+            ),
+            confirmation: () => (
+              <ConfirmationStep
+                barbershop_id={barbershop_id}
+                barbershop_slug={barbershop_slug}
+                barber={selectedBarber}
+                services={selectedServices}
+                dateTime={selectedDateTime}
+                loggedInClient={loggedInClient}
+                onSubmit={handleSubmit}
+                onBack={() => stepper.navigation.prev()}
+              />
+            ),
+          })}
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
