@@ -1,37 +1,61 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
-import { prismaClient } from "./prisma";
+import { PrismaAdapter } from '@auth/prisma-adapter'
+import NextAuth from 'next-auth'
+import { prismaClient } from './prisma'
+import { authConfig } from './auth.config'
 
-const prismaAdapter = PrismaAdapter(prismaClient);
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      id: string
+      role?: string
+      hasBarbershop?: boolean
+      name?: string | null
+      email?: string | null
+      image?: string | null
+    }
+  }
+  interface User {
+    role?: string
+  }
+}
+
+
+const prismaAdapter = PrismaAdapter(prismaClient)
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: prismaAdapter,
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-    }),
-  ],
-  callbacks: {
-    async signIn({ user, account, profile }) {
-      // Aqui poderíamos adicionar lógica para identificar a barbearia
-      // Por exemplo, baseado no domínio do email ou de um parâmetro na URL
-      return true;
-    },
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
-      }
-      return session;
-    },
-  },
-  pages: {
-    signIn: "/login",
-  },
   session: {
-    strategy: "database",
+    strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 dias
   },
-  trustHost: true,
-});
+  callbacks: {
+    async jwt({ token, user, trigger, session }) {
+      if (user) {
+        token.id = user.id
+        token.role = user.role
+        // Check if user has a barbershop on first sign-in
+        const dbUser = await prismaClient.user.findUnique({
+          where: { id: user.id! },
+          select: { barbershop_id: true },
+        })
+        token.hasBarbershop = !!dbUser?.barbershop_id
+      }
+      // Called when useSession().update() is triggered after onboarding
+      if (trigger === 'update' && session) {
+        if (session.role) token.role = session.role
+        if (typeof session.hasBarbershop === 'boolean')
+          token.hasBarbershop = session.hasBarbershop
+      }
+      return token
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string
+        session.user.role = token.role as string | undefined
+        session.user.hasBarbershop = token.hasBarbershop as boolean | undefined
+      }
+      return session
+    },
+  },
+})

@@ -1,41 +1,53 @@
-import { auth } from "@/lib/auth";
-import { NextRequest, NextResponse } from "next/server";
+import NextAuth from 'next-auth'
+import { authConfig } from '@/lib/auth.config'
+import { NextResponse } from 'next/server'
 
-export const middleware = auth(async (req: NextRequest) => {
-  const session = await auth();
-  const { pathname } = req.nextUrl;
+const { auth } = NextAuth(authConfig)
 
-  // Rotas públicas que não requerem autenticação
-  const publicRoutes = ["/", "/login", "/api/auth"];
+export default auth((req) => {
+  const session = req.auth
+  const { pathname } = req.nextUrl
 
-  // Se é uma rota de agendamento público (ex: /premium-barbershop)
-  const isPublicBooking = pathname.match(/^\/[a-z0-9\-]+\/?$|^\/[a-z0-9\-]+\/\//);
-
-  if (
-    publicRoutes.some((route) => pathname.startsWith(route)) ||
-    isPublicBooking
-  ) {
-    return NextResponse.next();
+  if (pathname.startsWith('/api/auth')) {
+    return NextResponse.next()
   }
 
-  // Rotas privadas (/admin) requerem autenticação
-  if (pathname.startsWith("/admin")) {
+  const reservedPrefixes = ['/onboarding', '/admin', '/login']
+  const isPublicBookingOrPortal =
+    /^\/[a-z0-9-]+(\/minha-conta(\/.*)?)?\/?\s*$/.test(pathname) &&
+    !reservedPrefixes.some((p) => pathname.startsWith(p))
+
+  if (isPublicBookingOrPortal) {
+    return NextResponse.next()
+  }
+
+  if (pathname === '/' || pathname === '/login') {
+    if (session) {
+      return NextResponse.redirect(new URL('/admin/dashboard', req.url))
+    }
+    return NextResponse.next()
+  }
+
+  if (pathname.startsWith('/onboarding')) {
     if (!session) {
-      const url = req.nextUrl.clone();
-      url.pathname = "/login";
-      url.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL('/login', req.url))
     }
-
-    // Validar se o usuário é ADMIN
-    if (session.user.role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/", req.url));
-    }
+    return NextResponse.next()
   }
 
-  return NextResponse.next();
-});
+  if (pathname.startsWith('/admin')) {
+    if (!session) {
+      const url = req.nextUrl.clone()
+      url.pathname = '/login'
+      url.searchParams.set('callbackUrl', pathname)
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next()
+  }
+
+  return NextResponse.next()
+})
 
 export const config = {
-  matcher: ["/((?!_next|.*\\..*).*)"],
-};
+  matcher: ['/((?!_next|.*\\..*).*)'],
+}
