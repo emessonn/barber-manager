@@ -10,7 +10,7 @@ const geist = Geist({ subsets: ['latin'], variable: '--font-sans' })
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'BarberManager - Gerenciamento de Barbearias',
+  title: 'NaValha - Gerenciamento de Barbearias',
   description:
     'SaaS Multi-tenant para gerenciamento de barbearias com agendamentos, finanças e CRM',
 }

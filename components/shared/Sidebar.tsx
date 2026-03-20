@@ -95,15 +95,17 @@ export function Sidebar({ barbershopName, barbershopLogo }: SidebarProps) {
           <Menu className='h-5 w-5' />
         </button>
         <div className='flex items-center gap-2'>
-          {barbershopLogo && (
+          {barbershopLogo ? (
             <img
               src={barbershopLogo}
-              alt={barbershopName || 'BarberManager'}
+              alt={barbershopName || 'NaValha'}
               className='h-6 w-6 rounded object-cover'
             />
+          ) : (
+            <Scissors className='h-5 w-5 text-amber-600' />
           )}
           <span className='text-base font-bold text-amber-600'>
-            {barbershopName || 'BarberManager'}
+            {barbershopName || 'NaValha'}
           </span>
         </div>
         {/* spacer to center the title */}
@@ -121,16 +123,18 @@ export function Sidebar({ barbershopName, barbershopLogo }: SidebarProps) {
           {/* Logo */}
           <div className='space-y-2'>
             <div className='flex items-center gap-3'>
-              {barbershopLogo && (
+              {barbershopLogo ? (
                 <img
                   src={barbershopLogo}
-                  alt={barbershopName || 'BarberManager'}
+                  alt={barbershopName || 'NaValha'}
                   className='h-10 w-10 rounded-lg object-cover'
                 />
+              ) : (
+                <Scissors className='h-8 w-8 text-amber-600' />
               )}
               <div>
                 <h1 className='text-lg font-bold text-amber-600'>
-                  {barbershopName || 'BarberManager'}
+                  {barbershopName || 'NaValha'}
                 </h1>
                 {barbershopName && (
                   <p className='text-xs text-zinc-500'>Admin Dashboard</p>

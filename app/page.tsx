@@ -35,7 +35,7 @@ export default function Home() {
         <div className='container mx-auto flex items-center justify-between px-4 py-6'>
           <div className='flex items-center space-x-2'>
             <Scissors className='h-8 w-8 text-amber-600' />
-            <h1 className='text-2xl font-bold gradient-text'>BarberManager</h1>
+            <h1 className='text-2xl font-bold gradient-text'>NaValha</h1>
           </div>
           <nav className='space-x-4 flex items-center'>
             <Link href='/login'>
