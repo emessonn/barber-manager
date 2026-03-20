@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Save, Clock, Building2, CalendarX } from 'lucide-react'
+import { Save, Clock, Building2, CalendarX, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -16,6 +16,7 @@ import {
 } from '@/actions/barbershop'
 import { type WorkingHours } from '@/lib/validators'
 import { ExceptionsTab, type ExceptionItem } from './ExceptionsTab'
+import { WhatsAppTab } from './WhatsAppTab'
 
 const DAYS_PT: Record<string, string> = {
   monday: 'Segunda-feira',
@@ -200,6 +201,10 @@ export function SettingsClient({ barbershop, exceptions }: Props) {
                 <CalendarX className='h-4 w-4' />
                 Exceções
               </TabsTrigger>
+              <TabsTrigger value='whatsapp' className='flex items-center gap-2'>
+                <MessageCircle className='h-4 w-4' />
+                WhatsApp
+              </TabsTrigger>
             </TabsList>
 
             {/* Info Tab */}
@@ -354,6 +359,11 @@ export function SettingsClient({ barbershop, exceptions }: Props) {
             {/* Exceptions Tab */}
             <TabsContent value='exceptions' className='mt-6'>
               <ExceptionsTab barbershop_id={barbershop.id} exceptions={exceptions} />
+            </TabsContent>
+
+            {/* WhatsApp Tab */}
+            <TabsContent value='whatsapp' className='mt-6'>
+              <WhatsAppTab />
             </TabsContent>
           </Tabs>
         </CardContent>
