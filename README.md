@@ -5,6 +5,7 @@ Um SaaS premium completo para gerenciamento de barbearias, construído com o sta
 ## 🚀 Características
 
 ### 📱 **Agendamento Cliente (Multi-tenant)**
+
 - Interface em 4 passos intuitiva e mobile-first
 - Seleção dinâmica de serviços com preços
 - Escolha de profissional disponível
@@ -12,6 +13,7 @@ Um SaaS premium completo para gerenciamento de barbearias, construído com o sta
 - Confirmação com SMS via WhatsApp (Twilio)
 
 ### 🏢 **Dashboard Admin Protegido**
+
 - Autenticação via Google OAuth (Auth.js v5)
 - Métricas de faturamento, agendamentos e clientes
 - CRUD completo de serviços e barbeiros
@@ -19,12 +21,14 @@ Um SaaS premium completo para gerenciamento de barbearias, construído com o sta
 - Controle de estoque com alertas
 
 ### 💰 **Gestão Financeira**
+
 - Fluxo de caixa automático (entradas/saídas)
 - Cálculo automático de comissões por barbeiro
 - Relatórios por período
 - Integração com agendamentos
 
 ### 👥 **CRM de Clientes**
+
 - Histórico de serviços
 - Controle de fidelidade
 - Lembretes de aniversário
@@ -32,20 +36,20 @@ Um SaaS premium completo para gerenciamento de barbearias, construído com o sta
 
 ## 🛠️ Stack Tecnológico
 
-| Tecnologia | Versão | Propósito |
-|-----------|--------|----------|
-| Next.js | 15+ | Framework full-stack |
-| React | 19 | Interface (hooks modernos) |
-| TypeScript | 5.3+ | Type safety |
-| Prisma | 6+ | ORM type-safe |
-| PostgreSQL | Latest | Banco (Vercel Postgres) |
-| Auth.js | 5 | Autenticação OAuth |
-| Tailwind CSS | 4 | Styling mobile-first |
-| Shadcn/ui | Latest | Componentes reutilizáveis |
-| TanStack Query | 5 | Gerenciamento de estado |
-| React Hook Form | 7.50+ | Formulários |
-| Zod | 3.22+ | Validação |
-| Twilio | 4 | WhatsApp/SMS |
+| Tecnologia      | Versão | Propósito                  |
+| --------------- | ------ | -------------------------- |
+| Next.js         | 15+    | Framework full-stack       |
+| React           | 19     | Interface (hooks modernos) |
+| TypeScript      | 5.3+   | Type safety                |
+| Prisma          | 6+     | ORM type-safe              |
+| PostgreSQL      | Latest | Banco (Vercel Postgres)    |
+| Auth.js         | 5      | Autenticação OAuth         |
+| Tailwind CSS    | 4      | Styling mobile-first       |
+| Shadcn/ui       | Latest | Componentes reutilizáveis  |
+| TanStack Query  | 5      | Gerenciamento de estado    |
+| React Hook Form | 7.50+  | Formulários                |
+| Zod             | 3.22+  | Validação                  |
+| Evolution API   | 4      | WhatsApp/SMS               |
 
 ## 📁 Estrutura de Diretórios
 
@@ -122,11 +126,13 @@ styles/
 ## 🚀 Quick Start
 
 ### 1. Requisitos
+
 - Node.js 18+
 - npm ou yarn
 - PostgreSQL (ou Vercel Postgres)
 
 ### 2. Instalação
+
 ```bash
 npm install
 cp .env.example .env.local
@@ -134,6 +140,7 @@ cp .env.example .env.local
 ```
 
 ### 3. Database Setup
+
 ```bash
 npm run prisma:generate
 npm run prisma:migrate
@@ -141,12 +148,14 @@ npm run prisma:seed
 ```
 
 ### 4. Desenvolvimento
+
 ```bash
 npm run dev
 # Acesse http://localhost:3000
 ```
 
 ### 5. Login
+
 - Página pública: `http://localhost:3000/premium-barbershop` (slug do seed)
 - Admin: `/admin/dashboard` (requer Google OAuth)
 
@@ -195,22 +204,26 @@ NODE_ENV=development
 ## 🔄 Próximas Fases
 
 ### Fase 2: CRUD Admin Completo
+
 - [ ] Tabelas e formulários CRUD (Serviços, Barbeiros, Clientes)
 - [ ] Validações com Zod + React Hook Form
 - [ ] Upload de imagens (logo, avatar)
 
 ### Fase 3: Funcionalidades Avançadas
+
 - [ ] Gestão de comissões com relatórios
 - [ ] Controle de estoque com alertas
 - [ ] Dashboard financeiro com gráficos
 - [ ] CRM com histórico de clientes
 
 ### Fase 4: Notificações
+
 - [ ] Integração Twilio (WhatsApp + SMS)
 - [ ] Job scheduler (lembretes automáticos)
 - [ ] Notificações push
 
 ### Fase 5: Deploy & Otimização
+
 - [ ] Deploy em Vercel
 - [ ] Otimizações de performance
 - [ ] SEO e analytics
