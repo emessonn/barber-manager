@@ -52,3 +52,4 @@ thumbs.db
 prisma/dev.db
 prisma/dev.db-journal
 tsconfig.tsbuildinfo
+.vercel
