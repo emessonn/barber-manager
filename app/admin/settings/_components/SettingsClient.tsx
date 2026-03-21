@@ -188,22 +188,22 @@ export function SettingsClient({ barbershop, exceptions }: Props) {
       <Card className='border-zinc-700 bg-zinc-900/50 backdrop-blur'>
         <CardContent className='p-6'>
           <Tabs defaultValue='info'>
-            <TabsList>
-              <TabsTrigger value='info' className='flex items-center gap-2'>
-                <Building2 className='h-4 w-4' />
-                Informações
+            <TabsList className='w-full'>
+              <TabsTrigger value='info' className='flex flex-1 items-center gap-2'>
+                <Building2 className='h-4 w-4 shrink-0' />
+                <span className='hidden sm:inline'>Informações</span>
               </TabsTrigger>
-              <TabsTrigger value='hours' className='flex items-center gap-2'>
-                <Clock className='h-4 w-4' />
-                Horários
+              <TabsTrigger value='hours' className='flex flex-1 items-center gap-2'>
+                <Clock className='h-4 w-4 shrink-0' />
+                <span className='hidden sm:inline'>Horários</span>
               </TabsTrigger>
-              <TabsTrigger value='exceptions' className='flex items-center gap-2'>
-                <CalendarX className='h-4 w-4' />
-                Exceções
+              <TabsTrigger value='exceptions' className='flex flex-1 items-center gap-2'>
+                <CalendarX className='h-4 w-4 shrink-0' />
+                <span className='hidden sm:inline'>Exceções</span>
               </TabsTrigger>
-              <TabsTrigger value='whatsapp' className='flex items-center gap-2'>
-                <MessageCircle className='h-4 w-4' />
-                WhatsApp
+              <TabsTrigger value='whatsapp' className='flex flex-1 items-center gap-2'>
+                <MessageCircle className='h-4 w-4 shrink-0' />
+                <span className='hidden sm:inline'>WhatsApp</span>
               </TabsTrigger>
             </TabsList>
 
