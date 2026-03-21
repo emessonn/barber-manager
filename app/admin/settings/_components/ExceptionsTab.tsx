@@ -92,10 +92,9 @@ export function ExceptionsTab({ barbershop_id, exceptions }: Props) {
               modifiersClassNames={{
                 exception: '!bg-red-500/20 !text-red-400 line-through',
               }}
-              className='lg:w-auto w-full'
+              className='w-full lg:w-auto'
               classNames={{
-                weekday: 'text-zinc-500 rounded-md lg:w-9 flex-1 lg:flex-none font-normal text-[0.8rem] text-center',
-                day: 'lg:h-9 lg:w-9 flex-1 lg:flex-none text-center text-sm p-0 relative [&:has([aria-selected])]:bg-amber-600/20 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
+                month_grid: 'w-full lg:w-auto border-collapse',
                 day_button: 'h-9 w-full lg:w-9 p-0 font-normal aria-selected:opacity-100 inline-flex items-center justify-center rounded-md hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 disabled:pointer-events-none disabled:opacity-30 text-sm text-zinc-200',
               }}
             />
