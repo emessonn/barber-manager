@@ -78,7 +78,7 @@ export function ExceptionsTab({ barbershop_id, exceptions }: Props) {
         {/* Calendar picker */}
         <div className='space-y-2'>
           <p className='text-sm font-medium text-zinc-300'>Selecione a data:</p>
-          <div className='rounded-lg border border-zinc-700 bg-zinc-900/50 p-1 inline-block'>
+          <div className='rounded-lg border border-zinc-700 bg-zinc-900/50 p-1 w-full'>
             <Calendar
               mode='single'
               selected={selected}
@@ -91,6 +91,12 @@ export function ExceptionsTab({ barbershop_id, exceptions }: Props) {
               modifiers={{ exception: exceptionDates }}
               modifiersClassNames={{
                 exception: '!bg-red-500/20 !text-red-400 line-through',
+              }}
+              className='w-full'
+              classNames={{
+                weekday: 'text-zinc-500 rounded-md flex-1 font-normal text-[0.8rem] text-center',
+                day: 'flex-1 text-center text-sm p-0 relative [&:has([aria-selected])]:bg-amber-600/20 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20',
+                day_button: 'h-9 w-full p-0 font-normal aria-selected:opacity-100 inline-flex items-center justify-center rounded-md hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 disabled:pointer-events-none disabled:opacity-30 text-sm text-zinc-200',
               }}
             />
           </div>
