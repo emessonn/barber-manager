@@ -12,6 +12,7 @@ import {
   Banknote,
   Clock,
   RefreshCw,
+  Hourglass,
 } from 'lucide-react'
 
 export default async function DashboardPage() {
@@ -33,29 +34,47 @@ export default async function DashboardPage() {
   const barbershop_id = user.barbershop_id
 
   // Buscar métricas
+  const yearStart = new Date(new Date().getFullYear(), 0, 1)
+
   const [
-    totalRevenue,
+    revenueRecords,
+    predictedBookings,
     totalCommissions,
     todayBookings,
     totalClients,
     recentBookings,
   ] = await Promise.all([
-    prismaClient.financialRecord.aggregate({
+    // Receita real: entradas manuais + entradas de bookings com pagamento confirmado
+    prismaClient.financialRecord.findMany({
       where: {
         barbershop_id,
         type: 'ENTRADA',
-        created_at: {
-          gte: new Date(new Date().getFullYear(), 0, 1),
-        },
+        created_at: { gte: yearStart },
+        OR: [
+          { booking_id: null },
+          {
+            booking: {
+              payment_status: { in: ['PAGO', 'PAGO_PRESENCIAL'] },
+            },
+          },
+        ],
       },
-      _sum: { amount: true },
+      select: { amount: true },
+    }),
+    // Saldo previsto: agendamentos confirmados sem pagamento efetuado no ano
+    prismaClient.booking.findMany({
+      where: {
+        barbershop_id,
+        status: { in: ['CONFIRMADO', 'FINALIZADO'] },
+        payment_status: { in: ['PENDENTE', 'PRESENCIAL'] },
+        date_time: { gte: yearStart },
+      },
+      select: { total_price: true, service: { select: { price: true } } },
     }),
     prismaClient.commission.aggregate({
       where: {
         barbershop_id,
-        computed_at: {
-          gte: new Date(new Date().getFullYear(), 0, 1),
-        },
+        computed_at: { gte: yearStart },
       },
       _sum: { amount: true },
     }),
@@ -88,14 +107,19 @@ export default async function DashboardPage() {
     }),
   ])
 
-  const revenue = totalRevenue._sum.amount || 0
+  const revenue = revenueRecords.reduce((sum, r) => sum + r.amount, 0)
+  const predictedRevenue = predictedBookings.reduce(
+    (sum, b) => sum + (b.total_price ?? b.service.price),
+    0,
+  )
   const commissions = totalCommissions._sum.amount || 0
 
   const PAYMENT_CONFIG: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-    PENDENTE:    { label: 'Pendente',           className: 'bg-zinc-700/50 text-zinc-400',    icon: <Clock className='h-3 w-3' /> },
-    PAGO:        { label: 'Pago Online',         className: 'bg-green-600/20 text-green-400',  icon: <CreditCard className='h-3 w-3' /> },
-    PRESENCIAL:  { label: 'Pagar na Barbearia',  className: 'bg-blue-600/20 text-blue-400',    icon: <Banknote className='h-3 w-3' /> },
-    REEMBOLSADO: { label: 'Reembolsado',         className: 'bg-red-600/20 text-red-400',      icon: <RefreshCw className='h-3 w-3' /> },
+    PENDENTE:         { label: 'Pendente',              className: 'bg-zinc-700/50 text-zinc-400',   icon: <Clock className='h-3 w-3' /> },
+    PAGO:             { label: 'Pago Online',            className: 'bg-green-600/20 text-green-400', icon: <CreditCard className='h-3 w-3' /> },
+    PRESENCIAL:       { label: 'Pagar na Barbearia',    className: 'bg-blue-600/20 text-blue-400',   icon: <Banknote className='h-3 w-3' /> },
+    PAGO_PRESENCIAL:  { label: 'Pago Presencialmente',  className: 'bg-green-600/20 text-green-400', icon: <Banknote className='h-3 w-3' /> },
+    REEMBOLSADO:      { label: 'Reembolsado',           className: 'bg-red-600/20 text-red-400',     icon: <RefreshCw className='h-3 w-3' /> },
   }
 
   const STATUS_CONFIG: Record<string, string> = {
@@ -116,17 +140,30 @@ export default async function DashboardPage() {
       </div>
 
       {/* Metrics Grid */}
-      <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
+      <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
         <Card className='border-zinc-700 bg-zinc-900/50 backdrop-blur'>
           <CardHeader className='flex flex-row items-center justify-between pb-2'>
             <CardTitle className='text-sm font-medium'>
-              Faturamento (Ano)
+              Faturamento Real (Ano)
             </CardTitle>
             <DollarSign className='h-4 w-4 text-amber-600' />
           </CardHeader>
           <CardContent>
             <p className='text-2xl font-bold'>{formatCurrency(revenue)}</p>
-            <p className='text-xs text-zinc-500'>Total de entradas</p>
+            <p className='text-xs text-zinc-500'>Pagamentos confirmados</p>
+          </CardContent>
+        </Card>
+
+        <Card className='border-zinc-700 bg-zinc-900/50 backdrop-blur border-dashed'>
+          <CardHeader className='flex flex-row items-center justify-between pb-2'>
+            <CardTitle className='text-sm font-medium'>
+              Previsto (Ano)
+            </CardTitle>
+            <Hourglass className='h-4 w-4 text-blue-400' />
+          </CardHeader>
+          <CardContent>
+            <p className='text-2xl font-bold text-blue-400'>{formatCurrency(predictedRevenue)}</p>
+            <p className='text-xs text-zinc-500'>Agendados sem pagamento</p>
           </CardContent>
         </Card>
 
@@ -142,7 +179,9 @@ export default async function DashboardPage() {
             <p className='text-xs text-zinc-500'>Total de comissões</p>
           </CardContent>
         </Card>
+      </div>
 
+      <div className='grid gap-4 md:grid-cols-2'>
         <Card className='border-zinc-700 bg-zinc-900/50 backdrop-blur'>
           <CardHeader className='flex flex-row items-center justify-between pb-2'>
             <CardTitle className='text-sm font-medium'>

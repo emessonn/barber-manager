@@ -69,17 +69,6 @@ export async function createBooking(barbershop_id: string, data: unknown) {
       },
     })
 
-    await prismaClient.financialRecord.create({
-      data: {
-        barbershop_id,
-        type: 'ENTRADA',
-        amount: service.price,
-        description: `Serviço: ${service.name} - Cliente: ${client.name}`,
-        category: 'SERVIÇO',
-        booking_id: booking.id,
-      },
-    })
-
     const DEFAULT_COMMISSION_PERCENTAGE = 20
     const commission_amount =
       (service.price * DEFAULT_COMMISSION_PERCENTAGE) / 100
@@ -112,11 +101,9 @@ export async function updateBookingStatus(
         select: { payment_status: true, payment_external_id: true },
       })
 
-      if (current?.payment_status === 'PENDENTE') {
-        await Promise.all([
-          prismaClient.financialRecord.deleteMany({ where: { booking_id } }),
-          prismaClient.commission.deleteMany({ where: { booking_id } }),
-        ])
+      if (current?.payment_status === 'PENDENTE' || current?.payment_status === 'PRESENCIAL') {
+        // Sem FinancialRecord criado para esses casos — apenas remove comissão e cancela
+        await prismaClient.commission.deleteMany({ where: { booking_id } })
 
         await prismaClient.booking.update({
           where: { id: booking_id },
@@ -126,7 +113,7 @@ export async function updateBookingStatus(
         return { success: true }
       }
 
-      if (current?.payment_status === 'PAGO') {
+      if (current?.payment_status === 'PAGO' || current?.payment_status === 'PAGO_PRESENCIAL') {
         // TODO: Reembolso — chamar refundPayment(current.payment_external_id!) do MercadoPago,
         // criar um FinancialRecord tipo SAIDA com o valor, e deletar a Commission.
         // Por ora, marca como REEMBOLSADO para sinalizar que precisa de ação manual.
@@ -148,6 +135,48 @@ export async function updateBookingStatus(
     })
 
     return { success: true, booking }
+  } catch (error) {
+    return { success: false, error: String(error) }
+  }
+}
+
+export async function confirmPresentialPayment(booking_id: string) {
+  try {
+    const booking = await prismaClient.booking.findUnique({
+      where: { id: booking_id },
+      include: { service: true, client: true },
+    })
+
+    if (!booking) return { success: false, error: 'Agendamento não encontrado' }
+
+    if (booking.payment_status !== 'PRESENCIAL' && booking.payment_status !== 'PENDENTE') {
+      return { success: false, error: 'Pagamento já foi processado' }
+    }
+
+    const price = booking.total_price ?? booking.service.price
+
+    await prismaClient.$transaction([
+      prismaClient.booking.update({
+        where: { id: booking_id },
+        data: { payment_status: 'PAGO_PRESENCIAL' },
+      }),
+      prismaClient.financialRecord.upsert({
+        where: { booking_id },
+        create: {
+          barbershop_id: booking.barbershop_id,
+          type: 'ENTRADA',
+          amount: price,
+          description: `Serviço: ${booking.service.name} - Cliente: ${booking.client.name}`,
+          category: 'SERVIÇO',
+          booking_id,
+        },
+        update: {
+          amount: price,
+        },
+      }),
+    ])
+
+    return { success: true }
   } catch (error) {
     return { success: false, error: String(error) }
   }

@@ -167,10 +167,11 @@ enum BookingStatus {
 }
 
 enum PaymentStatus {
-  PENDENTE     // Aguardando pagamento
-  PAGO         // Pago online (MercadoPago)
-  PRESENCIAL   // Pago na barbearia
-  REEMBOLSADO  // Estornado
+  PENDENTE          // Aguardando pagamento
+  PAGO              // Pago online (MercadoPago)
+  PRESENCIAL        // Pagará na barbearia (não pago ainda)
+  PAGO_PRESENCIAL   // Pago presencialmente (confirmado pelo admin)
+  REEMBOLSADO       // Estornado
 }
 
 model Booking {

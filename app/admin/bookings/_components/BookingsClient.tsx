@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Search, ChevronDown, CreditCard, Banknote, Clock, RefreshCw } from 'lucide-react'
+import { Calendar, Search, ChevronDown, CreditCard, Banknote, Clock, RefreshCw, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { updateBookingStatus } from '@/actions/bookings'
+import { updateBookingStatus, confirmPresentialPayment } from '@/actions/bookings'
 import { formatCurrency, formatDateBR, formatPhone } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
@@ -51,6 +51,7 @@ const PAYMENT_LABELS: Record<string, string> = {
   PENDENTE: 'Pendente',
   PAGO: 'Pago Online',
   PRESENCIAL: 'Pagar na Barbearia',
+  PAGO_PRESENCIAL: 'Pago Presencialmente',
   REEMBOLSADO: 'Reembolsado',
 }
 
@@ -58,6 +59,7 @@ const PAYMENT_COLORS: Record<string, string> = {
   PENDENTE: 'bg-zinc-700/50 text-zinc-400',
   PAGO: 'bg-green-600/20 text-green-400',
   PRESENCIAL: 'bg-blue-600/20 text-blue-400',
+  PAGO_PRESENCIAL: 'bg-green-600/20 text-green-400',
   REEMBOLSADO: 'bg-red-600/20 text-red-400',
 }
 
@@ -65,6 +67,7 @@ const PAYMENT_ICONS: Record<string, React.ReactNode> = {
   PENDENTE: <Clock className='h-3 w-3' />,
   PAGO: <CreditCard className='h-3 w-3' />,
   PRESENCIAL: <Banknote className='h-3 w-3' />,
+  PAGO_PRESENCIAL: <CheckCircle className='h-3 w-3' />,
   REEMBOLSADO: <RefreshCw className='h-3 w-3' />,
 }
 
@@ -83,6 +86,7 @@ export function BookingsClient({ bookings }: Props) {
   const [selected, setSelected] = useState<Booking | null>(null)
   const [newStatus, setNewStatus] = useState('')
   const [loading, setLoading] = useState(false)
+  const [paymentConfirmBooking, setPaymentConfirmBooking] = useState<Booking | null>(null)
 
   const filtered = bookings.filter((b) => {
     const matchesSearch =
@@ -104,6 +108,15 @@ export function BookingsClient({ bookings }: Props) {
     )
     setLoading(false)
     setSelected(null)
+    router.refresh()
+  }
+
+  async function handleConfirmPayment() {
+    if (!paymentConfirmBooking) return
+    setLoading(true)
+    await confirmPresentialPayment(paymentConfirmBooking.id)
+    setLoading(false)
+    setPaymentConfirmBooking(null)
     router.refresh()
   }
 
@@ -226,21 +239,36 @@ export function BookingsClient({ bookings }: Props) {
                           </span>
                         </td>
                         <td className='px-4 py-3'>
-                          {STATUS_TRANSITIONS[booking.status].length > 0 && (
-                            <Button
-                              size='sm'
-                              variant='outline'
-                              className='border-zinc-700 text-xs hover:border-amber-600 hover:text-amber-600'
-                              onClick={() => {
-                                setSelected(booking)
-                                setNewStatus(
-                                  STATUS_TRANSITIONS[booking.status][0],
-                                )
-                              }}
-                            >
-                              Alterar
-                            </Button>
-                          )}
+                          <div className='flex flex-col gap-1'>
+                            {STATUS_TRANSITIONS[booking.status].length > 0 && (
+                              <Button
+                                size='sm'
+                                variant='outline'
+                                className='border-zinc-700 text-xs hover:border-amber-600 hover:text-amber-600'
+                                onClick={() => {
+                                  setSelected(booking)
+                                  setNewStatus(
+                                    STATUS_TRANSITIONS[booking.status][0],
+                                  )
+                                }}
+                              >
+                                Alterar
+                              </Button>
+                            )}
+                            {(booking.payment_status === 'PRESENCIAL' ||
+                              booking.payment_status === 'PENDENTE') &&
+                              booking.status !== 'CANCELADO' && (
+                                <Button
+                                  size='sm'
+                                  variant='outline'
+                                  className='border-zinc-700 text-xs hover:border-green-500 hover:text-green-500'
+                                  onClick={() => setPaymentConfirmBooking(booking)}
+                                >
+                                  <CheckCircle className='mr-1 h-3 w-3' />
+                                  Confirmar Pgto
+                                </Button>
+                              )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -251,6 +279,62 @@ export function BookingsClient({ bookings }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Confirm Payment Dialog */}
+      <Dialog
+        open={!!paymentConfirmBooking}
+        onOpenChange={(v) => !v && setPaymentConfirmBooking(null)}
+      >
+        <DialogContent className='border-zinc-700 bg-zinc-900 text-white'>
+          <DialogHeader>
+            <DialogTitle>Confirmar pagamento presencial</DialogTitle>
+          </DialogHeader>
+          {paymentConfirmBooking && (
+            <div className='space-y-4'>
+              <div className='rounded-lg border border-zinc-800 p-3 text-sm space-y-1'>
+                <p>
+                  <span className='text-zinc-400'>Cliente:</span>{' '}
+                  {paymentConfirmBooking.client.name}
+                </p>
+                <p>
+                  <span className='text-zinc-400'>Serviço:</span>{' '}
+                  {paymentConfirmBooking.service.name}
+                </p>
+                <p>
+                  <span className='text-zinc-400'>Valor:</span>{' '}
+                  {formatCurrency(
+                    paymentConfirmBooking.total_price ??
+                      paymentConfirmBooking.service.price,
+                  )}
+                </p>
+                <p>
+                  <span className='text-zinc-400'>Data:</span>{' '}
+                  {formatDateBR(paymentConfirmBooking.date_time)}
+                </p>
+              </div>
+              <p className='text-sm text-zinc-400'>
+                Ao confirmar, o valor será registrado no saldo real da barbearia.
+              </p>
+            </div>
+          )}
+          <DialogFooter className='flex-col-reverse gap-2 sm:flex-row sm:gap-0'>
+            <Button
+              variant='outline'
+              className='border-zinc-700'
+              onClick={() => setPaymentConfirmBooking(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              disabled={loading}
+              className='bg-green-600 hover:bg-green-500'
+              onClick={handleConfirmPayment}
+            >
+              {loading ? 'Confirmando...' : 'Confirmar Pagamento'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Status Change Dialog */}
       <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>

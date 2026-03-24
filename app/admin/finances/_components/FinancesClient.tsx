@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, TrendingUp, TrendingDown, DollarSign, ChevronDown, Trash2 } from 'lucide-react'
+import { Plus, TrendingUp, TrendingDown, DollarSign, ChevronDown, Trash2, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -32,6 +32,7 @@ type Props = {
   barbershop_id: string
   totalIncome: number
   totalExpense: number
+  predictedRevenue: number
 }
 
 const CATEGORIES = [
@@ -55,6 +56,7 @@ export function FinancesClient({
   barbershop_id,
   totalIncome,
   totalExpense,
+  predictedRevenue,
 }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -124,7 +126,7 @@ export function FinancesClient({
         </div>
 
         {/* Summary Cards */}
-        <div className='grid gap-4 md:grid-cols-3'>
+        <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
           <Card className='border-zinc-700 bg-zinc-900/50 backdrop-blur'>
             <CardHeader className='flex flex-row items-center justify-between pb-2'>
               <CardTitle className='text-sm font-medium'>Receitas</CardTitle>
@@ -134,6 +136,7 @@ export function FinancesClient({
               <p className='text-2xl font-bold text-green-500'>
                 {formatCurrency(totalIncome)}
               </p>
+              <p className='mt-1 text-xs text-zinc-500'>Pagamentos confirmados</p>
             </CardContent>
           </Card>
 
@@ -146,12 +149,13 @@ export function FinancesClient({
               <p className='text-2xl font-bold text-red-400'>
                 {formatCurrency(totalExpense)}
               </p>
+              <p className='mt-1 text-xs text-zinc-500'>Total de saídas</p>
             </CardContent>
           </Card>
 
           <Card className='border-zinc-700 bg-zinc-900/50 backdrop-blur'>
             <CardHeader className='flex flex-row items-center justify-between pb-2'>
-              <CardTitle className='text-sm font-medium'>Saldo</CardTitle>
+              <CardTitle className='text-sm font-medium'>Saldo Real</CardTitle>
               <DollarSign className='h-4 w-4 text-amber-600' />
             </CardHeader>
             <CardContent>
@@ -162,6 +166,22 @@ export function FinancesClient({
                 )}
               >
                 {formatCurrency(balance)}
+              </p>
+              <p className='mt-1 text-xs text-zinc-500'>Receitas − Despesas</p>
+            </CardContent>
+          </Card>
+
+          <Card className='border-zinc-700 bg-zinc-900/50 backdrop-blur border-dashed'>
+            <CardHeader className='flex flex-row items-center justify-between pb-2'>
+              <CardTitle className='text-sm font-medium'>Saldo Previsto</CardTitle>
+              <Clock className='h-4 w-4 text-blue-400' />
+            </CardHeader>
+            <CardContent>
+              <p className='text-2xl font-bold text-blue-400'>
+                {formatCurrency(balance + predictedRevenue)}
+              </p>
+              <p className='mt-1 text-xs text-zinc-500'>
+                +{formatCurrency(predictedRevenue)} a receber
               </p>
             </CardContent>
           </Card>

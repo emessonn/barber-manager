@@ -68,13 +68,37 @@ export async function POST(req: NextRequest) {
     }
 
     if (payment.status === 'approved') {
-      await prismaClient.booking.updateMany({
+      // Busca dados dos bookings para criar FinancialRecords
+      const bookings = await prismaClient.booking.findMany({
         where: { id: { in: bookingIds } },
-        data: {
-          payment_status: 'PAGO',
-          payment_external_id: String(payment.id),
-        },
+        include: { service: true, client: true },
       })
+
+      await prismaClient.$transaction([
+        prismaClient.booking.updateMany({
+          where: { id: { in: bookingIds } },
+          data: {
+            payment_status: 'PAGO',
+            payment_external_id: String(payment.id),
+          },
+        }),
+        ...bookings.map((b) =>
+          prismaClient.financialRecord.upsert({
+            where: { booking_id: b.id },
+            create: {
+              barbershop_id: b.barbershop_id,
+              type: 'ENTRADA',
+              amount: b.total_price ?? b.service.price,
+              description: `Serviço: ${b.service.name} - Cliente: ${b.client.name}`,
+              category: 'SERVIÇO',
+              booking_id: b.id,
+            },
+            update: {
+              amount: b.total_price ?? b.service.price,
+            },
+          }),
+        ),
+      ])
 
       // Envia confirmação de pagamento via WhatsApp (só para o primeiro booking)
       await sendPaymentConfirmedWhatsApp(bookingIds[0])
