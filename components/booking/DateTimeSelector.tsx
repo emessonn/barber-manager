@@ -52,7 +52,12 @@ export function DateTimeSelector({
 
         if (data.success) {
           setAvailableTimes(
-            data.available_times.map((time: string) => new Date(time)),
+            data.available_times.map((time: string) => {
+              const [h, m] = time.split(':').map(Number)
+              const d = new Date(selectedDate!)
+              d.setHours(h, m, 0, 0)
+              return d
+            }),
           )
           setException(data.exception ?? null)
         }

@@ -149,7 +149,9 @@ export async function GET(request: NextRequest) {
       })
 
       if (!hasConflict && slotEnd <= endTime) {
-        availableTimes.push(currentTime.toISOString())
+        const h = String(currentTime.getHours()).padStart(2, '0')
+        const m = String(currentTime.getMinutes()).padStart(2, '0')
+        availableTimes.push(`${h}:${m}`)
       }
 
       currentTime = new Date(currentTime.getTime() + 30 * 60_000)
