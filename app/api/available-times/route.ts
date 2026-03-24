@@ -29,6 +29,10 @@ export async function GET(request: NextRequest) {
   const barber_id = searchParams.get('barber_id')
   const date = searchParams.get('date')
   const service_duration = searchParams.get('service_duration')
+  // tz_offset: valor de new Date().getTimezoneOffset() no browser
+  // Positivo = atrás do UTC (ex: UTC-3 = 180)
+  const tz_offset = parseInt(searchParams.get('tz_offset') ?? '0')
+  const tzOffsetMs = tz_offset * 60_000
 
   if (!barber_id || !date || !service_duration) {
     return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 })
@@ -44,10 +48,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Barbeiro não encontrado' }, { status: 404 })
     }
 
-    // Parse date preserving the local date (avoid UTC shift)
     const [year, month, day] = date.split('-').map(Number)
-    const requestDate = new Date(year, month - 1, day)
 
+    // Dia da semana baseado na data local
+    const requestDate = new Date(year, month - 1, day)
     const dayOfWeek = new Intl.DateTimeFormat('en-US', { weekday: 'long' })
       .format(requestDate)
       .toLowerCase() as keyof typeof DAY_MAP
@@ -57,7 +61,7 @@ export async function GET(request: NextRequest) {
     const barberHoursRaw = barber.working_hours as Record<string, any> | null
     const barberDay = barberHoursRaw?.[dayOfWeek]
 
-    // Check if the barbershop has a closed-day exception for this date
+    // Checar exceção de dia fechado
     const exception = await prismaClient.barbershopException.findFirst({
       where: {
         barbershop_id: barber.barbershop_id,
@@ -75,17 +79,14 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Only enforce shop closure when this specific day is explicitly configured
     if (shopDay && (shopDay.open === false || !shopDay.start || !shopDay.end)) {
       return NextResponse.json({ success: true, available_times: [] })
     }
 
-    // If barber explicitly has no hours for this day, they're off
     if (barberDay && !barberDay.start && !barberDay.end) {
       return NextResponse.json({ success: true, available_times: [] })
     }
 
-    // Resolve effective working window — default to 08:00–18:00 when not configured
     const DEFAULT_START = '08:00'
     const DEFAULT_END = '18:00'
 
@@ -106,55 +107,68 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, available_times: [] })
     }
 
-    // Fetch active bookings for the day
-    const dayStart = new Date(year, month - 1, day, 0, 0, 0, 0)
-    const dayEnd = new Date(year, month - 1, day, 23, 59, 59, 999)
+    // Converte "HH:MM local" para UTC usando o offset do cliente.
+    // Exemplo: "09:00" com UTC-3 (offset=180) → UTC 12:00
+    // UTC = local_naive + tzOffsetMs
+    const [startHour, startMin] = effectiveStart.split(':').map(Number)
+    const [endHour, endMin] = effectiveEnd.split(':').map(Number)
+
+    const startUtcMs = Date.UTC(year, month - 1, day, startHour, startMin) + tzOffsetMs
+    const endUtcMs   = Date.UTC(year, month - 1, day, endHour,   endMin)   + tzOffsetMs
+
+    // Buscar agendamentos no intervalo UTC do dia local
+    const dayStartUtcMs = Date.UTC(year, month - 1, day, 0,  0,  0,   0) + tzOffsetMs
+    const dayEndUtcMs   = Date.UTC(year, month - 1, day, 23, 59, 59, 999) + tzOffsetMs
 
     const bookings = await prismaClient.booking.findMany({
       where: {
         barber_id,
-        date_time: { gte: dayStart, lte: dayEnd },
+        date_time: { gte: new Date(dayStartUtcMs), lte: new Date(dayEndUtcMs) },
         status: { in: ['PENDENTE', 'CONFIRMADO'] },
       },
       include: { service: true },
     })
 
-    // Generate available slots (30-min increments, service duration must fit)
-    const availableTimes: string[] = []
+    // Verificar se é hoje no horário local do cliente
+    const nowLocalMs = Date.now() - tzOffsetMs
+    const nowLocal = new Date(nowLocalMs)
+    const isToday =
+      nowLocal.getUTCFullYear() === year &&
+      nowLocal.getUTCMonth()    === month - 1 &&
+      nowLocal.getUTCDate()     === day
+
     const duration = parseInt(service_duration)
+    const slotStep = 30 * 60_000
+    const availableTimes: string[] = []
 
-    const [startHour, startMin] = effectiveStart.split(':').map(Number)
-    const [endHour, endMin] = effectiveEnd.split(':').map(Number)
+    let slotStartMs = startUtcMs
 
-    let currentTime = new Date(year, month - 1, day, startHour, startMin, 0, 0)
-    const endTime = new Date(year, month - 1, day, endHour, endMin, 0, 0)
+    while (slotStartMs < endUtcMs) {
+      const slotEndMs = slotStartMs + duration * 60_000
 
-    const now = new Date()
-    const isToday = requestDate.toDateString() === now.toDateString()
-
-    while (currentTime < endTime) {
-      const slotEnd = new Date(currentTime.getTime() + duration * 60_000)
-
-      // Skip slots already in the past
-      if (isToday && currentTime <= now) {
-        currentTime = new Date(currentTime.getTime() + 30 * 60_000)
+      // Pular slots já passados
+      if (isToday && slotStartMs <= Date.now()) {
+        slotStartMs += slotStep
         continue
       }
 
-      // Check for conflicts with existing bookings
+      // Verificar conflito com agendamentos existentes
       const hasConflict = bookings.some((booking) => {
-        const bookingDuration = booking.service.duration_minutes * 60_000
-        const bookingEnd = new Date(booking.date_time.getTime() + bookingDuration)
-        return currentTime < bookingEnd && slotEnd > booking.date_time
+        const bookingStartMs = booking.date_time.getTime()
+        const bookingEndMs   = bookingStartMs + booking.service.duration_minutes * 60_000
+        return slotStartMs < bookingEndMs && slotEndMs > bookingStartMs
       })
 
-      if (!hasConflict && slotEnd <= endTime) {
-        const h = String(currentTime.getHours()).padStart(2, '0')
-        const m = String(currentTime.getMinutes()).padStart(2, '0')
+      if (!hasConflict && slotEndMs <= endUtcMs) {
+        // Converter de volta para HH:MM no horário local do cliente
+        const localSlotMs = slotStartMs - tzOffsetMs
+        const d = new Date(localSlotMs)
+        const h = String(d.getUTCHours()).padStart(2, '0')
+        const m = String(d.getUTCMinutes()).padStart(2, '0')
         availableTimes.push(`${h}:${m}`)
       }
 
-      currentTime = new Date(currentTime.getTime() + 30 * 60_000)
+      slotStartMs += slotStep
     }
 
     return NextResponse.json({ success: true, available_times: availableTimes })

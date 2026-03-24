@@ -45,8 +45,9 @@ export function DateTimeSelector({
       setException(null)
       try {
         const dateString = format(selectedDate, 'yyyy-MM-dd')
+        const tzOffset = new Date().getTimezoneOffset()
         const response = await fetch(
-          `/api/available-times?barber_id=${barber.id}&date=${dateString}&service_duration=${totalDuration}`,
+          `/api/available-times?barber_id=${barber.id}&date=${dateString}&service_duration=${totalDuration}&tz_offset=${tzOffset}`,
         )
         const data = await response.json()
 
