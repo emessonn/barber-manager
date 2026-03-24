@@ -3,10 +3,59 @@
 import { cookies } from 'next/headers'
 import { prismaClient } from '@/lib/prisma'
 import { CLIENT_SESSION_COOKIE } from '@/lib/client-session'
-import { sendWhatsAppMessage, msgOtpLogin } from '@/lib/whatsapp'
+import { sendWhatsAppMessage, isWhatsAppConfigured, msgOtpLogin } from '@/lib/whatsapp'
+import { sendEmail, isEmailConfigured, htmlOtpEmail } from '@/lib/email'
+import { sendSms, isSmsConfigured } from '@/lib/sms'
+
+type OtpChannel = 'whatsapp' | 'email' | 'sms'
+
+/** Mascara email: jo***@gmail.com */
+function maskEmail(email: string): string {
+  const [local, domain] = email.split('@')
+  if (!domain) return email
+  const visible = local.slice(0, 2)
+  return `${visible}***@${domain}`
+}
+
+/** Mascara telefone: (11) *****-3456 */
+function maskPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '')
+  return digits.length >= 4 ? `(${digits.slice(0, 2)}) *****-${digits.slice(-4)}` : phone
+}
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
+export async function loginWithPhone(phone: string, barbershop_id: string) {
+  try {
+    const client = await prismaClient.client.findUnique({
+      where: { phone_barbershop_id: { phone, barbershop_id } },
+    })
+
+    if (!client) {
+      return { success: false, error: 'Nenhum cadastro encontrado para este telefone nesta barbearia.' }
+    }
+
+    const expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    const session = await prismaClient.clientSession.create({
+      data: { client_id: client.id, barbershop_id, expires_at },
+    })
+
+    const cookieStore = await cookies()
+    cookieStore.set(CLIENT_SESSION_COOKIE, session.session_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      expires: expires_at,
+      path: '/',
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error(error)
+    return { success: false, error: 'Erro ao fazer login. Tente novamente.' }
+  }
 }
 
 export async function requestOtp(phone: string, barbershop_id: string) {
@@ -40,9 +89,61 @@ export async function requestOtp(phone: string, barbershop_id: string) {
       data: { phone, barbershop_id, otp, expires_at },
     })
 
-    await sendWhatsAppMessage(phone, msgOtpLogin({ otp, barbershopName: barbershop?.name ?? '' }))
+    const barbershopName = barbershop?.name ?? ''
+    const otpText = msgOtpLogin({ otp, barbershopName })
 
-    return { success: true, otp: process.env.NODE_ENV === 'development' ? otp : undefined }
+    let channel: OtpChannel | null = null
+    let destination = ''
+
+    // 1. Tentar WhatsApp
+    if (isWhatsAppConfigured()) {
+      const sent = await sendWhatsAppMessage(phone, otpText)
+      if (sent) {
+        channel = 'whatsapp'
+        destination = maskPhone(phone)
+      }
+    }
+
+    // 2. Fallback: Email
+    if (!channel && client.email && isEmailConfigured()) {
+      const sent = await sendEmail(
+        client.email,
+        `Código de acesso - ${barbershopName}`,
+        htmlOtpEmail(otp, barbershopName),
+      )
+      if (sent) {
+        channel = 'email'
+        destination = maskEmail(client.email)
+      }
+    }
+
+    // 3. Fallback: SMS
+    if (!channel && isSmsConfigured()) {
+      const sent = await sendSms(phone, otpText)
+      if (sent) {
+        channel = 'sms'
+        destination = maskPhone(phone)
+      }
+    }
+
+    // Nenhum canal disponível
+    if (!channel) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[OTP] Nenhum canal de notificação configurado. Retornando OTP no DEV mode.')
+        return { success: true, channel: null, destination: '', otp }
+      }
+      return {
+        success: false,
+        error: 'Nenhum canal de notificação configurado. Entre em contato com a barbearia.',
+      }
+    }
+
+    return {
+      success: true,
+      channel,
+      destination,
+      otp: process.env.NODE_ENV === 'development' ? otp : undefined,
+    }
   } catch (error) {
     console.error(error)
     return { success: false, error: 'Erro ao enviar código. Tente novamente.' }

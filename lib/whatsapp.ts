@@ -15,6 +15,11 @@ const API_URL = process.env.EVOLUTION_API_URL ?? ''
 const API_KEY = process.env.EVOLUTION_API_KEY ?? ''
 const INSTANCE = process.env.EVOLUTION_INSTANCE ?? ''
 
+/** Retorna true se as variáveis de ambiente do WhatsApp estão configuradas */
+export function isWhatsAppConfigured(): boolean {
+  return !!(API_URL && API_KEY && INSTANCE)
+}
+
 /** Converte qualquer formato de telefone para o padrão WhatsApp (55XXXXXXXXXXX) */
 function toWhatsAppNumber(phone: string): string {
   const digits = phone.replace(/\D/g, '')
@@ -23,15 +28,15 @@ function toWhatsAppNumber(phone: string): string {
 
 /**
  * Envia mensagem de texto via WhatsApp.
- * Fire-and-forget: não lança erro se as env vars não estiverem configuradas.
+ * Retorna true se enviado com sucesso, false caso contrário.
  */
 export async function sendWhatsAppMessage(
   phone: string,
   text: string,
-): Promise<void> {
-  if (!API_URL || !API_KEY || !INSTANCE) {
+): Promise<boolean> {
+  if (!isWhatsAppConfigured()) {
     console.warn('[WhatsApp] Variáveis de ambiente não configuradas. Mensagem não enviada.')
-    return
+    return false
   }
 
   const number = toWhatsAppNumber(phone)
@@ -49,9 +54,13 @@ export async function sendWhatsAppMessage(
     if (!res.ok) {
       const body = await res.text()
       console.error(`[WhatsApp] Erro ao enviar mensagem: ${res.status} ${body}`)
+      return false
     }
+
+    return true
   } catch (err) {
     console.error('[WhatsApp] Falha na requisição:', err)
+    return false
   }
 }
 
