@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Hourglass,
 } from 'lucide-react'
+import { BookingLinkCopy } from './_components/BookingLinkCopy'
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -31,6 +32,7 @@ export default async function DashboardPage() {
   // Buscar usuário para obter barbershop_id
   const user = await prismaClient.user.findUnique({
     where: { id: session.user.id },
+    include: { barbershop: { select: { slug: true } } },
   })
 
   if (!user || !user.barbershop_id) {
@@ -38,6 +40,8 @@ export default async function DashboardPage() {
   }
 
   const barbershop_id = user.barbershop_id
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const bookingUrl = `${appUrl}/${user.barbershop?.slug}`
 
   // Buscar métricas
   const yearStart = new Date(new Date().getFullYear(), 0, 1)
@@ -144,6 +148,9 @@ export default async function DashboardPage() {
           Bem-vindo de volta! Aqui está seu resumo.
         </p>
       </div>
+
+      {/* Booking Link */}
+      {user.barbershop?.slug && <BookingLinkCopy bookingUrl={bookingUrl} />}
 
       {/* Metrics Grid */}
       <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-3'>
