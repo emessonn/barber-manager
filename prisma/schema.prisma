@@ -13,6 +13,7 @@ datasource db {
 // ==================== AUTH ====================
 enum UserRole {
   ADMIN
+  RECEPCAO
   BARBER
 }
 
@@ -53,12 +54,14 @@ model VerificationToken {
 
 model User {
   id            String    @id @default(cuid())
-  email         String    @unique
+  email         String?   @unique
   emailVerified DateTime?
   name          String?
   image         String?
   role          UserRole  @default(BARBER)
   barbershop_id String?
+  login         String?   // Login para usuários da equipe (barbeiro/recepção)
+  password_hash String?   // Senha hasheada para usuários da equipe
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 
@@ -68,6 +71,7 @@ model User {
   barber            Barber?
   financial_records FinancialRecord[]
 
+  @@unique([login, barbershop_id])
   @@index([barbershop_id])
   @@index([email])
 }

@@ -20,10 +20,16 @@ export default async function AdminLayout({
   })
 
   if (!user?.barbershop_id) {
-    redirect('/onboarding')
+    // OAuth admins without barbershop go to onboarding
+    // Staff users created by admin always have barbershop_id, so this shouldn't happen for them
+    if (user?.role === 'ADMIN') {
+      redirect('/onboarding')
+    }
+    redirect('/login')
   }
 
-  if (user.role !== 'ADMIN') {
+  // Only ADMIN, RECEPCAO and BARBER roles are allowed
+  if (!['ADMIN', 'RECEPCAO', 'BARBER'].includes(user.role)) {
     redirect('/login')
   }
 
@@ -37,6 +43,8 @@ export default async function AdminLayout({
       <Sidebar
         barbershopName={barbershop?.name}
         barbershopLogo={barbershop?.logo_url}
+        userRole={user.role}
+        userName={session.user.name ?? undefined}
       />
       <main className='flex-1 overflow-auto pt-[52px] md:pt-0'>{children}</main>
     </div>

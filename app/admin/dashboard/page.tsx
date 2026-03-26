@@ -1,6 +1,7 @@
 import React from 'react'
 import { auth } from '@/lib/auth'
 import { prismaClient } from '@/lib/prisma'
+import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency, formatDateBR } from '@/lib/utils'
 import {
@@ -20,6 +21,11 @@ export default async function DashboardPage() {
 
   if (!session || !session?.user?.id) {
     return <div>Não autorizado</div>
+  }
+
+  // Redirect barbers to their own page
+  if (session.user.role === 'BARBER') {
+    redirect('/admin/minha-agenda')
   }
 
   // Buscar usuário para obter barbershop_id

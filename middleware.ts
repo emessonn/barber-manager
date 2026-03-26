@@ -12,12 +12,20 @@ export default auth((req) => {
     return NextResponse.next()
   }
 
-  const reservedPrefixes = ['/onboarding', '/admin', '/login']
+  const reservedPrefixes = ['/onboarding', '/admin', '/login', '/staff-login']
   const isPublicBookingOrPortal =
     /^\/[a-z0-9-]+(\/minha-conta(\/.*)?)?\/?\s*$/.test(pathname) &&
     !reservedPrefixes.some((p) => pathname.startsWith(p))
 
   if (isPublicBookingOrPortal) {
+    return NextResponse.next()
+  }
+
+  // Staff login page - redirect to dashboard if already authenticated
+  if (pathname === '/staff-login') {
+    if (session) {
+      return NextResponse.redirect(new URL('/admin/dashboard', req.url))
+    }
     return NextResponse.next()
   }
 
