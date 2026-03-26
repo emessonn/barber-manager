@@ -393,14 +393,14 @@ export function UsuariosClient({ staffUsers, barbers, barbershopSlug }: Usuarios
               <div className='space-y-2'>
                 <Label>Vincular ao barbeiro (opcional)</Label>
                 <Select
-                  value={createForm.barber_id}
-                  onValueChange={(v) => setCreateForm({ ...createForm, barber_id: v })}
+                  value={createForm.barber_id || 'none'}
+                  onValueChange={(v) => setCreateForm({ ...createForm, barber_id: v === 'none' ? '' : v })}
                 >
                   <SelectTrigger className='border-zinc-700 bg-zinc-800/50'>
                     <SelectValue placeholder='Selecione um barbeiro...' />
                   </SelectTrigger>
                   <SelectContent className='border-zinc-700 bg-zinc-900'>
-                    <SelectItem value=''>Nenhum</SelectItem>
+                    <SelectItem value='none'>Nenhum</SelectItem>
                     {barbers
                       .filter((b) => !b.user_id)
                       .map((b) => (
@@ -474,14 +474,14 @@ export function UsuariosClient({ staffUsers, barbers, barbershopSlug }: Usuarios
               <div className='space-y-2'>
                 <Label>Vincular ao barbeiro</Label>
                 <Select
-                  value={editForm.barber_id}
-                  onValueChange={(v) => setEditForm({ ...editForm, barber_id: v })}
+                  value={editForm.barber_id || 'none'}
+                  onValueChange={(v) => setEditForm({ ...editForm, barber_id: v === 'none' ? '' : v })}
                 >
                   <SelectTrigger className='border-zinc-700 bg-zinc-800/50'>
                     <SelectValue placeholder='Selecione um barbeiro...' />
                   </SelectTrigger>
                   <SelectContent className='border-zinc-700 bg-zinc-900'>
-                    <SelectItem value=''>Nenhum</SelectItem>
+                    <SelectItem value='none'>Nenhum</SelectItem>
                     {availableBarbersForEdit(editUser?.id).map((b) => (
                       <SelectItem key={b.id} value={b.id}>
                         {b.name}
