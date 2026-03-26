@@ -1,5 +1,6 @@
 'use server'
 
+import { auth } from '@/lib/auth'
 import { prismaClient } from '@/lib/prisma'
 import { createBarberSchema } from '@/lib/validators'
 
@@ -60,12 +61,25 @@ export async function updateBarber(
   service_ids: string[] = [],
 ) {
   try {
+    const session = await auth()
     const validated = createBarberSchema.parse(data)
+
+    // Recepção não pode alterar comissão
+    const updateData: typeof validated = { ...validated }
+    if (session?.user?.role === 'RECEPCAO') {
+      const current = await prismaClient.barber.findUnique({
+        where: { id: barber_id },
+        select: { commission_percentage: true },
+      })
+      if (current) {
+        updateData.commission_percentage = current.commission_percentage
+      }
+    }
 
     const barber = await prismaClient.barber.update({
       where: { id: barber_id },
       data: {
-        ...validated,
+        ...updateData,
         services: { set: service_ids.map((id) => ({ id })) },
       },
       include: { services: true },

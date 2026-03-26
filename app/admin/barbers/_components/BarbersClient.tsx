@@ -51,6 +51,7 @@ type Props = {
   barbers: Barber[]
   services: Service[]
   barbershop_id: string
+  user_role: string
 }
 
 const emptyForm = {
@@ -60,7 +61,8 @@ const emptyForm = {
   avatar_url: '',
 }
 
-export function BarbersClient({ barbers, services, barbershop_id }: Props) {
+export function BarbersClient({ barbers, services, barbershop_id, user_role }: Props) {
+  const canEditCommission = user_role !== 'RECEPCAO'
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<Barber | null>(null)
@@ -325,21 +327,23 @@ export function BarbersClient({ barbers, services, barbershop_id }: Props) {
                 required
               />
             </div>
-            <div className='space-y-1'>
-              <label className='text-sm text-zinc-400'>Comissão (%)</label>
-              <Input
-                type='number'
-                min='0'
-                max='100'
-                step='0.5'
-                placeholder='20'
-                value={form.commission_percentage}
-                onChange={(e) =>
-                  setForm({ ...form, commission_percentage: e.target.value })
-                }
-                required
-              />
-            </div>
+            {canEditCommission && (
+              <div className='space-y-1'>
+                <label className='text-sm text-zinc-400'>Comissão (%)</label>
+                <Input
+                  type='number'
+                  min='0'
+                  max='100'
+                  step='0.5'
+                  placeholder='20'
+                  value={form.commission_percentage}
+                  onChange={(e) =>
+                    setForm({ ...form, commission_percentage: e.target.value })
+                  }
+                  required
+                />
+              </div>
+            )}
 
             {/* Services selection */}
             <div className='space-y-2'>

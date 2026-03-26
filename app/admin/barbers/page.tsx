@@ -35,6 +35,7 @@ export default async function BarbersPage() {
       barbers={barbers}
       services={services}
       barbershop_id={user.barbershop_id}
+      user_role={user.role}
     />
   )
 }
